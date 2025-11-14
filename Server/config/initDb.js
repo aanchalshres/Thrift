@@ -2,22 +2,79 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 async function initDb() {
-  const {
-    DB_HOST = 'localhost',
-    DB_PORT = 3306,
-    DB_USER = 'root',
-    DB_PASS = '',
-    DB_NAME = 'thriftsydb',
-  } = process.env;
+  let dbConfig;
+  let DB_NAME;
 
-  // Ensure database exists
-  const conn = await mysql.createConnection({
-    host: DB_HOST,
-    port: DB_PORT,
-    user: DB_USER,
-    password: DB_PASS || '',
-    multipleStatements: true,
-  });
+  // Support MYSQL_URL (Railway internal), DATABASE_URL, or individual params
+  if (process.env.MYSQL_URL) {
+    const url = new URL(process.env.MYSQL_URL);
+    dbConfig = {
+      host: url.hostname,
+      port: Number(url.port) || 3306,
+      user: url.username,
+      password: url.password,
+    };
+    DB_NAME = url.pathname.slice(1);
+    console.log(`Using MYSQL_URL (Railway internal): ${url.hostname}/${DB_NAME}`);
+  } else if (process.env.DATABASE_URL) {
+    const url = new URL(process.env.DATABASE_URL);
+    dbConfig = {
+      host: url.hostname,
+      port: Number(url.port) || 3306,
+      user: url.username,
+      password: url.password,
+    };
+    DB_NAME = url.pathname.slice(1);
+    console.log(`Using DATABASE_URL: ${url.hostname}:${url.port}/${DB_NAME}`);
+  } else {
+    const {
+      DB_HOST = 'localhost',
+      DB_PORT = 3306,
+      DB_USER = 'root',
+      DB_PASS = '',
+      DB_NAME: dbName = 'thriftsydb',
+    } = process.env;
+    
+    dbConfig = {
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASS || '',
+    };
+    DB_NAME = dbName;
+    console.log(`Using individual config: ${DB_HOST}/${DB_NAME}`);
+  }
+
+  // Ensure database exists with retry logic and extended timeouts
+  let conn;
+  let retries = 3;
+  let lastError;
+
+  while (retries > 0) {
+    try {
+      console.log(`Attempting to connect to database... (${4 - retries}/3)`);
+      conn = await mysql.createConnection({
+        ...dbConfig,
+        multipleStatements: true,
+        connectTimeout: 60000, // 60 seconds - only valid option for Connection
+      });
+      console.log('Database connection established successfully');
+      break;
+    } catch (error) {
+      lastError = error;
+      retries--;
+      console.error(`Database connection attempt failed: ${error.message}`);
+      if (retries > 0) {
+        console.log(`Retrying in 5 seconds... (${retries} attempts remaining)`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+  }
+
+  if (!conn) {
+    throw new Error(`Failed to connect to database after 3 attempts: ${lastError.message}`);
+  }
+
   await conn.execute(
     `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
      CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`

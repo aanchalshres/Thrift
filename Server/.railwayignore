@@ -1,0 +1,12 @@
+node_modules/
+uploads/
+public/uploads/
+.env
+.env.local
+.env.production
+*.log
+dist/
+build/
+__tests__/
+tests/
+.git/

@@ -245,7 +245,6 @@ export const Navbar = () => {
                       key={n.id}
                       className={`flex items-start gap-2 ${isUnread ? 'bg-[hsl(var(--thrift-green))]/10' : ''} hover:bg-[hsl(var(--thrift-green))]/10 hover:text-[hsl(var(--thrift-green))] data-[highlighted]:bg-[hsl(var(--thrift-green))]/10 data-[highlighted]:text-[hsl(var(--thrift-green))]`}
                       onClick={async () => {
-                        // mark single as read locally
                         if (isUnread) {
                           setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x));
                           try {

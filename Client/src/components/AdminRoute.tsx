@@ -6,7 +6,7 @@ export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { token, loading, user } = useAuth();
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
 
   useEffect(() => {
     if (loading) return;

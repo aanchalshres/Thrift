@@ -485,6 +485,34 @@ async function initDb() {
     console.warn('admin bootstrap warning:', e && e.message ? e.message : e);
   }
 
+  // Auto-seed default admin if no admins exist
+  try {
+    const [admins] = await pool.query("SELECT COUNT(*) AS cnt FROM users WHERE role='admin'");
+    const adminCount = Array.isArray(admins) && admins[0] ? Number(admins[0].cnt) : 0;
+    
+    if (adminCount === 0) {
+      const defaultAdminEmail = 'thriftsy.np@gmail.com';
+      const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [defaultAdminEmail]);
+      
+      if (!Array.isArray(existing) || existing.length === 0) {
+        // Create default admin if doesn't exist
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash('thriftsy@123', 10);
+        const [result] = await pool.query(
+          'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+          ['Thriftsy Admin', defaultAdminEmail, hashedPassword, 'admin']
+        );
+        console.log(`✅ Auto-created default admin user: ${defaultAdminEmail}`);
+      } else {
+        // Just promote existing user
+        await pool.query("UPDATE users SET role='admin' WHERE email = ?", [defaultAdminEmail]);
+        console.log(`✅ Promoted existing user to admin: ${defaultAdminEmail}`);
+      }
+    }
+  } catch (e) {
+    console.warn('auto-seed admin warning:', e && e.message ? e.message : e);
+  }
+
   console.log('✅ Database and tables are ready');
 }
 

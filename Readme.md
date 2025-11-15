@@ -7,15 +7,22 @@ Polished e‑commerce demo with React + Vite (client) and Express + MySQL (serve
 - Server: Node/Express, MySQL (mysql2/promise)
 - Payments: eSewa (sandbox), Khalti (sandbox), Cash on Delivery (COD)
 
+### 🌐 Live Deployment
+- **Frontend**: Deployed on Vercel
+- **Backend**: Deployed on Railway at `https://thrift-production-af9f.up.railway.app`
+- **Database**: MySQL on Railway
+
 ---
 
 ## Quick start
+
+### Local Development
 
 Prerequisites:
 - Node.js 18+
 - MySQL 8.x (or compatible MariaDB)
 
-1) Server setup
+1) **Server setup**
 - Copy `Server/.env.example` to `Server/.env` and fill values (DB, JWT, payments). At minimum set DB creds and JWT_SECRET.
 - From repo root:
 
@@ -30,7 +37,7 @@ The server will:
 - Serve API at http://localhost:5000
 - Expose uploads at http://localhost:5000/uploads
 
-2) Client setup
+2) **Client setup**
 - Copy `Client/.env.example` to `Client/.env` (defaults to `VITE_API_URL=http://localhost:5000`).
 
 ```cmd
@@ -41,6 +48,24 @@ npm run dev
 
 Client runs at http://localhost:5173 (default Vite port). Make sure `VITE_API_URL` points to the server.
 
+### Production Deployment
+
+#### Backend (Railway)
+1. Create a new project on [Railway](https://railway.app)
+2. Add MySQL database service
+3. Deploy the `Server` directory
+4. Set environment variables (see Server/.env.example)
+5. Railway will automatically detect and deploy Node.js app
+
+#### Frontend (Vercel)
+1. Create a new project on [Vercel](https://vercel.com)
+2. Import your GitHub repository
+3. Set Root Directory to `Client`
+4. Add environment variable: `VITE_API_URL` with your Railway backend URL
+5. Deploy
+
+**Note**: All fallback URLs in the codebase are set to the production Railway URL, so the app will work even without environment variables configured.
+
 ---
 
 ## Environment variables
@@ -48,14 +73,22 @@ Client runs at http://localhost:5173 (default Vite port). Make sure `VITE_API_UR
 See example files:
 - `Server/.env.example` — DB config, JWT, eSewa, Khalti, client/server base URLs
 - `Client/.env.example` — API base URL
+- `Client/.env.production` — Production API URL (for Vercel deployment)
 
-Key server vars:
-- DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
-- JWT_SECRET
-- CLIENT_BASE_URL (e.g., http://localhost:5173)
-- SERVER_BASE_URL (e.g., http://localhost:5000)
-- ESEWA_ENV=sandbox, ESEWA_MERCHANT_CODE, ESEWA_SECRET_KEY
-- KHALTI_SECRET_KEY
+### Server Environment Variables (Railway)
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` — MySQL connection
+- `JWT_SECRET` — Secret for JWT token generation
+- `CLIENT_BASE_URL` — Frontend URL (e.g., https://your-app.vercel.app)
+- `SERVER_BASE_URL` — Backend URL (Railway auto-provides this)
+- `ESEWA_ENV=sandbox`, `ESEWA_MERCHANT_CODE`, `ESEWA_SECRET_KEY`
+- `KHALTI_SECRET_KEY`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — Email configuration
+
+### Client Environment Variables (Vercel)
+- `VITE_API_URL` — Backend API URL (https://thrift-production-af9f.up.railway.app)
+- `VITE_TAX_RATE` — Tax rate (default: 0)
+
+**Important**: Vercel requires redeployment after environment variable changes as they are baked into the build at deploy time.
 
 ---
 
@@ -149,10 +182,34 @@ Client:
 
 ## Troubleshooting
 
-- If images don’t load: ensure `Server/public/uploads` exists (it’s created automatically) and that product images were uploaded.
+### Local Development
+- If images don't load: ensure `Server/public/uploads` exists (it's created automatically) and that product images were uploaded.
 - If bulk CSV import skips rows: confirm required headers `title,price` are present and price > 0.
 - If payments fail in sandbox: verify keys and base URLs in `.env` match your local ports.
 - If tables are missing: restart the server; `initDb.js` creates/patches tables on boot.
+
+### Production Deployment
+- **Frontend not connecting to backend**: 
+  - Verify `VITE_API_URL` environment variable in Vercel includes `https://` protocol
+  - Redeploy on Vercel after changing environment variables
+  - Check browser console Network tab for failed API requests
+  
+- **CORS errors**: 
+  - Update `allowedOrigins` array in `Server/app.js` with your Vercel URL
+  - Commit and push changes to trigger Railway redeploy
+  
+- **404 errors on Vercel**: 
+  - Ensure Root Directory is set to `Client` in Vercel project settings
+  - Check that `vercel.json` rewrites are configured properly
+  
+- **Railway backend not accessible**: 
+  - Check Railway deployment logs for errors
+  - Verify MySQL database connection in Railway dashboard
+  - Test health endpoint: `https://thrift-production-af9f.up.railway.app/_health`
+  
+- **Images not loading in production**:
+  - Railway ephemeral filesystem: uploaded images are lost on restart
+  - Consider using cloud storage (Cloudinary, AWS S3, etc.) for production
 
 ## Bulk import products (CSV)
 

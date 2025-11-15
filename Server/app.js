@@ -25,15 +25,18 @@ const PORT = process.env.PORT || 5000;
 
 // ===== Middleware =====
 // CORS configuration
-// Allow listed local dev origins, primary production domain, and branch/preview deployments.
+// Allow local dev, both production domains (typo variant), and preview deployments.
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
-  'https://thriftsyy.vercel.app', // main production domain
+  'https://thriftsyy.vercel.app', // original main production domain
+  'https://thriftsy.vercel.app',  // typo / alternate domain now in use
 ];
 
-const vercelPreviewRegex = /^https:\/\/thriftsyy-[a-z0-9-]+\.vercel\.app$/i;
-const vercelProjectPreviewRegex = /^https:\/\/thriftsyy-[a-z0-9-]+-aachal-shresthas-projects\.vercel\.app$/i;
+// Accept preview / branch builds for either thriftsy or thriftsyy prefix
+const vercelPreviewRegex = /^https:\/\/thriftsy+y?-[a-z0-9-]+\.vercel\.app$/i;
+// Accept project-scoped preview domains containing suffix
+const vercelProjectPreviewRegex = /^https:\/\/thriftsy+y?-[a-z0-9-]+-aachal-shresthas-projects\.vercel\.app$/i;
 
 app.use(cors({
   origin: function(origin, callback) {

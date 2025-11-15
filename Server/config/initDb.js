@@ -56,7 +56,6 @@ async function initDb() {
       conn = await mysql.createConnection({
         ...dbConfig,
         multipleStatements: true,
-        connectTimeout: 60000, // 60 seconds - only valid option for Connection
       });
       console.log('Database connection established successfully');
       break;
@@ -496,8 +495,8 @@ async function initDb() {
       
       if (!Array.isArray(existing) || existing.length === 0) {
         // Create default admin if doesn't exist
-        const bcrypt = require('bcrypt');
-        const hashedPassword = await bcrypt.hash('thriftsy@123', 10);
+        const bcryptjs = require('bcryptjs');
+        const hashedPassword = await bcryptjs.hash('thriftsy@123', 10);
         const [result] = await pool.query(
           'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
           ['Thriftsy Admin', defaultAdminEmail, hashedPassword, 'admin']

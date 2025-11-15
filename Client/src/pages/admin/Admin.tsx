@@ -59,7 +59,7 @@ type Analytics = {
 
 export default function AdminPage() {
   const { token } = useAuth();
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
   const [tab, setTab] = useState<'dashboard'|'orders'|'products'|'users'|'payments'>('dashboard');
   const [ledger, setLedger] = useState<any[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);

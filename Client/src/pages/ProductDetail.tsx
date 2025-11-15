@@ -33,7 +33,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
   const { user, token } = useAuth();
 
   const [product, setProduct] = useState<Product | null>(null);

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function OrdersPage() {
   const { token } = useAuth();
-  const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = (import.meta as any).env?.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined as any;
   const navigate = useNavigate();
 

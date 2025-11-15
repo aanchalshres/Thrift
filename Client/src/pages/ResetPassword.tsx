@@ -13,7 +13,7 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('');
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
 
   useEffect(() => {
     if (!token) setError('Missing reset token');

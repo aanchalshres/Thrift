@@ -46,7 +46,7 @@ export const ProductCard = ({
   const [cartItems, setCartItems] = useState<number>(0);
   const [isHovered, setIsHovered] = useState(false);
   const auth = useAuth();
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   // Load cart and wishlist from localStorage on mount
   useEffect(() => {

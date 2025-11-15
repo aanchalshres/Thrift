@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 
 export default function ApplyVerification() {
   const { user, token } = useAuth();
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
   const [shopName, setShopName] = useState('');
   const [docs, setDocs] = useState<File[]>([]);
   const [status, setStatus] = useState<'none'|'pending'|'approved'|'rejected'>('none');

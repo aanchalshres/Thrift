@@ -117,6 +117,33 @@ router.post("/", async (req, res) => {
             salesParams
           );
         }
+
+        // Send email notifications to sellers
+        const uniqueSellers = new Set(Array.from(sellerByProduct.values()).filter(Boolean));
+        if (uniqueSellers.size > 0) {
+          const sellerIds = Array.from(uniqueSellers);
+          const [sellerRows] = await conn.query(
+            `SELECT id, email, name FROM users WHERE id IN (${sellerIds.map(() => '?').join(',')})`,
+            sellerIds
+          );
+          const { sendMail } = require('../config/mailer');
+          for (const seller of Array.isArray(sellerRows) ? sellerRows : []) {
+            if (!seller.email) continue;
+            const sellerItems = items.filter(it => sellerByProduct.get(Number(it.productId)) === seller.id);
+            const itemsList = sellerItems.map(it => `- ${it.title || 'Product'} (Rs. ${it.price || 0})`).join('\n');
+            const totalAmount = sellerItems.reduce((sum, it) => sum + Number(it.price || 0), 0);
+            try {
+              await sendMail({
+                to: seller.email,
+                subject: `New Order #${orderId} - Items Sold`,
+                text: `Hi ${seller.name || 'Seller'},\n\nGreat news! You have a new order.\n\nOrder #${orderId}\nItems:\n${itemsList}\n\nTotal: Rs. ${totalAmount}\n\nPlease prepare the items for shipment.\n\nThank you,\nThriftsy Team`,
+                html: `<p>Hi <strong>${seller.name || 'Seller'}</strong>,</p><p>Great news! You have a new order.</p><p><strong>Order #${orderId}</strong></p><p><strong>Items:</strong></p><ul>${sellerItems.map(it => `<li>${it.title || 'Product'} - Rs. ${it.price || 0}</li>`).join('')}</ul><p><strong>Total: Rs. ${totalAmount}</strong></p><p>Please prepare the items for shipment.</p><p>Thank you,<br/>Thriftsy Team</p>`,
+              });
+            } catch (mailErr) {
+              console.warn('Failed to send order notification email to seller:', seller.id, mailErr && mailErr.message);
+            }
+          }
+        }
       } catch (e) {
         console.warn('seller_sales insert warning:', e && e.message ? e.message : e);
       }
@@ -321,12 +348,27 @@ router.put('/:id', async (req, res) => {
       // Notify involved sellers (seller_sales)
       try {
         const [sellers] = await conn.query(
-          `SELECT DISTINCT seller_id FROM seller_sales WHERE order_id = ?`, [id]
+          `SELECT DISTINCT s.seller_id, u.email, u.name FROM seller_sales s JOIN users u ON u.id = s.seller_id WHERE s.order_id = ?`, [id]
         );
+        const { sendMail } = require('../config/mailer');
         for (const s of (Array.isArray(sellers) ? sellers : [])) {
           try {
             notify.send(s.seller_id, 'order_updated', { orderId: id, status: 'cancelled' });
           } catch (e) {}
+          
+          // Send email notification
+          if (s.email) {
+            try {
+              await sendMail({
+                to: s.email,
+                subject: `Order #${id} Cancelled`,
+                text: `Hi ${s.name || 'Seller'},\n\nOrder #${id} has been cancelled by the buyer.\n\nThe items from this order have been returned to available inventory.\n\nThank you,\nThriftsy Team`,
+                html: `<p>Hi <strong>${s.name || 'Seller'}</strong>,</p><p>Order #${id} has been <strong>cancelled</strong> by the buyer.</p><p>The items from this order have been returned to available inventory.</p><p>Thank you,<br/>Thriftsy Team</p>`,
+              });
+            } catch (mailErr) {
+              console.warn('Failed to send cancellation email to seller:', s.seller_id, mailErr && mailErr.message);
+            }
+          }
         }
       } catch (e) {
         console.warn('notify sellers error:', e && e.message ? e.message : e);

@@ -291,14 +291,17 @@ const Sell = () => {
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-4 py-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center gap-4 mb-4">
               <Button variant="ghost" onClick={() => setShowMyListings(false)}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Sell
               </Button>
-              <h1 className="text-3xl font-bold">My Listings</h1>
             </div>
+            <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">My Listings</h1>
+          </div>
+
+          <div className="flex items-center justify-center mb-6">
             <Input 
               placeholder="Filter by title or brand" 
               value={listingsFilter} 
@@ -394,12 +397,14 @@ const Sell = () => {
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-4 py-10">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" onClick={() => setShowMyOrders(false)}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Sell
-            </Button>
-            <h1 className="text-3xl font-bold">My Sales Orders</h1>
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <Button variant="ghost" onClick={() => setShowMyOrders(false)}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Sell
+              </Button>
+            </div>
+            <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">My Sales Orders</h1>
           </div>
 
           <Card className="border-none shadow-sm bg-card">
@@ -461,13 +466,13 @@ const Sell = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className={cn(
-          "mb-8 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500",
+          "mb-8 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center",
           isVisible && "opacity-100"
         )}>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Sell Your Item</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">Sell Your Item</h1>
+              <p className="text-foreground/90">
                 List your pre-loved fashion items for sale in just a few steps
               </p>
             </div>

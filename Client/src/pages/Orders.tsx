@@ -72,8 +72,10 @@ export default function OrdersPage() {
   const paginate = <T,>(arr: T[]) => arr.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
 
   return (
-    <div className="container mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-6">My Orders</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">My Orders</h1>
+      </div>
       <Card className="border-none shadow-sm">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle>Orders</CardTitle>

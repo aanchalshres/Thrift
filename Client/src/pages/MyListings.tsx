@@ -156,8 +156,11 @@ export default function MyListings() {
 
   return (
     <div className="container mx-auto px-4 py-10">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-4 text-[hsl(var(--thrift-green))]">My Listings</h1>
+      </div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">My Listings</h1>
+        <div></div>
         <div className="flex items-center gap-2">
           <Input placeholder="Filter by title or brand" value={filter} onChange={e => setFilter(e.target.value)} className="w-56" />
           <Button variant="ghost" onClick={load} title="Refresh">

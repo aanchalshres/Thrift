@@ -426,12 +426,12 @@ const Shop = () => {
         {/* Header */}
         <div
           className={cn(
-            "mb-8 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500",
+            "mb-8 opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center",
             isVisible && "opacity-100"
           )}
         >
-          <h1 className="text-3xl font-bold mb-2">Shop Pre-Loved Fashion</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">Shop Pre-Loved Fashion</h1>
+          <p className="text-foreground/90 max-w-2xl mx-auto">
             Discover unique, sustainable fashion items listed by our community
           </p>
         </div>

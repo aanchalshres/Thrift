@@ -4,6 +4,21 @@ require('dotenv').config();
 const { getEsewaEndpoint, signEsewa, buildEsewaConfig } = require('../utils/esewa');
 const pool = require('../db');
 
+// Helpers to derive base URLs in different deployment environments.
+function resolveServerBase() {
+  const explicit = process.env.SERVER_BASE_URL;
+  if (explicit) return explicit.replace(/\/$/, '');
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN; // Railway sets this for public services
+  if (railway) return `https://${railway}`;
+  return `http://localhost:${process.env.PORT || 5000}`;
+}
+
+function resolveClientBase() {
+  const explicit = process.env.CLIENT_BASE_URL;
+  if (explicit) return explicit.replace(/\/$/, '');
+  return 'http://localhost:8080'; // Vite dev fallback
+}
+
 // Initiate eSewa payment
 router.post('/esewa/initiate', async (req, res) => {
   try {
@@ -22,8 +37,8 @@ router.post('/esewa/initiate', async (req, res) => {
       return res.status(500).json({ message: 'Missing ESEWA_MERCHANT_CODE or ESEWA_SECRET_KEY in environment' });
     }
 
-  const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
-  const serverBase = process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const clientBase = resolveClientBase();
+    const serverBase = resolveServerBase();
     const env = (process.env.ESEWA_ENV || 'sandbox').toLowerCase();
     const endpoint = getEsewaEndpoint(env);
 
@@ -161,7 +176,7 @@ async function markOrderPaidByTxn(pool, txn) {
 const handleEsewaSuccess = async (req, res) => {
   try {
     const secretKey = process.env.ESEWA_SECRET_KEY;
-  const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
+    const clientBase = resolveClientBase();
     if (!secretKey) return res.status(500).send('Missing ESEWA_SECRET_KEY');
 
     // eSewa can send a base64 'data' or raw fields
@@ -194,13 +209,13 @@ const handleEsewaSuccess = async (req, res) => {
   const to = orderId ? `${clientBase}/order/${orderId}` : `${clientBase}/success?method=esewa`;
     return res.redirect(302, to);
   } catch (e) {
-  const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
+  const clientBase = resolveClientBase();
     return res.redirect(302, `${clientBase}/failure?method=esewa`);
   }
 };
 
 const handleEsewaFailure = async (req, res) => {
-  const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
+  const clientBase = resolveClientBase();
   const txn = req.body?.transaction_uuid || req.query?.transaction_uuid || '';
   return res.redirect(302, `${clientBase}/failure?method=esewa${txn ? `&txn=${encodeURIComponent(txn)}` : ''}`);
 };
@@ -218,8 +233,8 @@ router.post('/khalti/initiate', async (req, res) => {
     const { amount, productName, orderId } = req.body || {};
     const secretKey = process.env.KHALTI_SECRET_KEY;
     if (!secretKey) return res.status(500).json({ message: 'Missing KHALTI_SECRET_KEY in environment' });
-    const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
-    const serverBase = process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const clientBase = resolveClientBase();
+    const serverBase = resolveServerBase();
     const amt = Number(amount);
     if (!amt || !isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' });
     const amountPaisa = Math.round(amt * 100);
@@ -274,11 +289,11 @@ router.post('/khalti/initiate', async (req, res) => {
 router.all('/khalti/return', async (req, res) => {
   try {
     const secretKey = process.env.KHALTI_SECRET_KEY;
-    const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
+    const clientBase = resolveClientBase();
     if (!secretKey) return res.status(500).send('Missing KHALTI_SECRET_KEY');
 
     const pidx = req.query?.pidx || req.body?.pidx;
-    if (!pidx) return res.redirect(302, `${clientBase}/failure?method=khalti&reason=missing-pidx`);
+    if (!pidx) return res.redirect(302, `${resolveClientBase()}/failure?method=khalti&reason=missing-pidx`);
 
     const lookup = await fetch('https://a.khalti.com/api/v2/epayment/lookup/', {
       method: 'POST',
@@ -290,14 +305,14 @@ router.all('/khalti/return', async (req, res) => {
     });
     if (!lookup.ok) {
       const errText = await lookup.text().catch(() => '');
-      return res.redirect(302, `${clientBase}/failure?method=khalti&reason=lookup-${lookup.status}`);
+      return res.redirect(302, `${resolveClientBase()}/failure?method=khalti&reason=lookup-${lookup.status}`);
     }
   const info = await lookup.json();
   try { console.log('[Khalti] lookup', { pidx: String(pidx), status: info?.status, amount: info?.total_amount, txn: info?.transaction_id }); } catch {}
     const statusLc = String(info.status || '').toLowerCase();
     const completed = statusLc === 'completed';
 
-    let to = `${clientBase}/failure?method=khalti&reason=${encodeURIComponent(statusLc || 'unknown')}`;
+    let to = `${resolveClientBase()}/failure?method=khalti&reason=${encodeURIComponent(statusLc || 'unknown')}`;
     try {
       const [rows] = await pool.query('SELECT id FROM orders WHERE khalti_pidx = ? LIMIT 1', [String(pidx)]);
       const order = Array.isArray(rows) && rows[0] ? rows[0] : null;
@@ -316,9 +331,9 @@ router.all('/khalti/return', async (req, res) => {
           to = `${clientBase}/order/${order.id}`;
         } else if (statusLc === 'pending' || statusLc === 'initiated') {
           // Show order page with pending state rather than immediate failure
-          to = `${clientBase}/order/${order.id}?payment=pending&method=khalti`;
+          to = `${resolveClientBase()}/order/${order.id}?payment=pending&method=khalti`;
         } else {
-          to = `${clientBase}/failure?method=khalti&reason=${encodeURIComponent(statusLc || 'unknown')}`;
+          to = `${resolveClientBase()}/failure?method=khalti&reason=${encodeURIComponent(statusLc || 'unknown')}`;
         }
       }
     } catch (e) { /* non-fatal */ }
@@ -326,7 +341,7 @@ router.all('/khalti/return', async (req, res) => {
     return res.redirect(302, to);
   } catch (e) {
     const clientBase = process.env.CLIENT_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
-    return res.redirect(302, `${clientBase}/failure?method=khalti&reason=exception`);
+    return res.redirect(302, `${resolveClientBase()}/failure?method=khalti&reason=exception`);
   }
 });
 

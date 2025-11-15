@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Plus, Package } from 'lucide-react';
+import { Upload, X, Plus, Package, ArrowLeft, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Sell = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -50,6 +51,12 @@ const Sell = () => {
   const [showMyOrders, setShowMyOrders] = useState(false);
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  // My Listings state
+  const [showMyListings, setShowMyListings] = useState(false);
+  const [myListings, setMyListings] = useState<any[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsFilter, setListingsFilter] = useState('');
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -105,6 +112,77 @@ const Sell = () => {
       setOrdersLoading(false);
     }
   };
+
+  // Fetch seller listings
+  useEffect(() => {
+    if (showMyListings && token) {
+      fetchMyListings();
+    }
+  }, [showMyListings, token]);
+
+  const fetchMyListings = async () => {
+    if (!token) return;
+    setListingsLoading(true);
+    try {
+      const resp = await fetch(`${apiBase}/api/products/mine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setMyListings(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch listings:', e);
+    } finally {
+      setListingsLoading(false);
+    }
+  };
+
+  const setStatus = async (id: number | string, status: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/api/products/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: new URLSearchParams({ status }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      setMyListings(prev => prev.map(p => String(p.id) === String(id) ? { ...p, status } : p));
+    } catch (e) {
+      await fetchMyListings();
+    }
+  };
+
+  const onDelete = async (id: number | string) => {
+    if (!token) return;
+    if (!confirm('Delete this listing? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${apiBase}/api/products/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setMyListings(prev => prev.filter(p => String(p.id) !== String(id)));
+      toast.success('Listing deleted');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete');
+    }
+  };
+
+  const normStatus = (s: any) => String(s || 'unsold').toLowerCase();
+  const statusColor = (s: string) => {
+    switch (normStatus(s)) {
+      case 'sold': return 'bg-thrift-green text-white';
+      case 'order_received': return 'bg-warning text-warning-foreground';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const filteredListings = myListings.filter(p => {
+    const q = listingsFilter.trim().toLowerCase();
+    if (!q) return true;
+    return String(p.title || '').toLowerCase().includes(q) || String(p.brand || '').toLowerCase().includes(q);
+  });
 
   function addFiles(newFiles: File[]) {
     if (!Array.isArray(newFiles) || newFiles.length === 0) return;
@@ -208,6 +286,175 @@ const Sell = () => {
     }
   };
 
+  // Show My Listings view
+  if (showMyListings) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 py-10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => setShowMyListings(false)}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Sell
+              </Button>
+              <h1 className="text-3xl font-bold">My Listings</h1>
+            </div>
+            <Input 
+              placeholder="Filter by title or brand" 
+              value={listingsFilter} 
+              onChange={e => setListingsFilter(e.target.value)} 
+              className="w-56" 
+            />
+          </div>
+
+          <Card className="border-none shadow-sm bg-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Listings ({filteredListings.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {listingsLoading ? (
+                <p>Loading…</p>
+              ) : filteredListings.length === 0 ? (
+                <div className="text-muted-foreground">No listings found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-auto border-collapse">
+                    <thead>
+                      <tr className="text-left text-sm text-muted-foreground border-b">
+                        <th className="px-3 py-2">Image</th>
+                        <th className="px-3 py-2">Title</th>
+                        <th className="px-3 py-2">Price</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredListings.map((p) => (
+                        <tr
+                          key={p.id}
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => navigate(`/product/${p.id}`)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/product/${p.id}`); } }}
+                          className="align-top border-b last:border-b-0 hover:bg-[hsl(var(--thrift-green))]/5 transition cursor-pointer"
+                        >
+                          <td className="px-3 py-3 w-24">
+                            {p.image ? (
+                              <img src={p.image} alt={p.title ? `${p.title}` : 'Listing image'} className="w-20 h-14 object-cover rounded" />
+                            ) : (
+                              <div className="w-20 h-14 bg-muted grid place-items-center text-xs text-muted-foreground rounded">No image</div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-medium">{p.title}</div>
+                            <div className="text-xs text-muted-foreground">{p.brand || ''} {p.size ? `• ${p.size}` : ''}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-thrift-green">NPR {Number(p.price || 0).toLocaleString()}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <Badge className={statusColor(p.status)}>
+                                {normStatus(p.status).replace('order_received', 'Order received').replace('unsold', 'Unsold').replace('sold', 'Sold')}
+                              </Badge>
+                              <select
+                                value={normStatus(p.status)}
+                                onChange={(e) => { e.stopPropagation(); setStatus(p.id, e.target.value); }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-sm border rounded px-2 py-1 bg-white"
+                                aria-label={`Change status for ${p.title}`}
+                              >
+                                <option value="unsold">Unsold</option>
+                                <option value="order_received">Order received</option>
+                                <option value="sold">Sold</option>
+                              </select>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); navigate('/my-listings'); }}>Edit</Button>
+                              <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); onDelete(p.id); }}>Delete</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Show My Orders view
+  if (showMyOrders) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 py-10">
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="ghost" onClick={() => setShowMyOrders(false)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Sell
+            </Button>
+            <h1 className="text-3xl font-bold">My Sales Orders</h1>
+          </div>
+
+          <Card className="border-none shadow-sm bg-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Orders ({myOrders.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ordersLoading ? (
+                <p>Loading…</p>
+              ) : myOrders.length === 0 ? (
+                <div className="text-muted-foreground">No orders yet. Your sales will appear here.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-auto border-collapse">
+                    <thead>
+                      <tr className="text-left text-sm text-muted-foreground border-b">
+                        <th className="px-3 py-2">Order ID</th>
+                        <th className="px-3 py-2">Buyer</th>
+                        <th className="px-3 py-2">Items</th>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myOrders.map((order) => {
+                        const total = (order.items || []).reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+                        return (
+                          <tr key={order.id} className="align-top border-b last:border-b-0 hover:bg-[hsl(var(--thrift-green))]/5 transition">
+                            <td className="px-3 py-3 font-medium">#{order.id}</td>
+                            <td className="px-3 py-3">{order.buyer_name || 'Anonymous'}</td>
+                            <td className="px-3 py-3">
+                              <div className="text-sm">
+                                {(order.items || []).map((item: any, idx: number) => (
+                                  <div key={idx}>{item.title}</div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-sm text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-3 py-3 text-right font-medium text-thrift-green">NPR {total.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       
@@ -226,69 +473,26 @@ const Sell = () => {
             </div>
             {token && (
               <div className="pt-1 flex gap-2">
-                <Button asChild variant="outline" className="hover:bg-[hsl(var(--thrift-green))]/10">
-                  <Link to="/my-listings">My Listings</Link>
+                <Button 
+                  variant="outline" 
+                  className="hover:bg-[hsl(var(--thrift-green))]/10"
+                  onClick={() => setShowMyListings(true)}
+                >
+                  <List className="w-4 h-4 mr-2" />
+                  My Listings
                 </Button>
                 <Button 
                   variant="outline" 
                   className="hover:bg-[hsl(var(--thrift-green))]/10"
-                  onClick={() => setShowMyOrders(!showMyOrders)}
+                  onClick={() => setShowMyOrders(true)}
                 >
                   <Package className="w-4 h-4 mr-2" />
-                  {showMyOrders ? 'Hide' : 'My Orders'}
+                  My Orders
                 </Button>
               </div>
             )}
           </div>
         </div>
-
-        {/* My Orders Section */}
-        {showMyOrders && token && (
-          <div className="bg-card rounded-lg border p-6 animate-in fade-in slide-in-from-top-4 duration-300">
-            <h2 className="text-xl font-semibold mb-4">My Sales Orders</h2>
-            {ordersLoading ? (
-              <p className="text-muted-foreground">Loading orders...</p>
-            ) : myOrders.length === 0 ? (
-              <p className="text-muted-foreground">No orders yet. Your sales will appear here.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Buyer</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myOrders.map((order) => {
-                      const total = (order.items || []).reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
-                      return (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.id}</TableCell>
-                          <TableCell>{order.buyer_name || 'Anonymous'}</TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {(order.items || []).map((item: any, idx: number) => (
-                                <div key={idx}>{item.title}</div>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">Rs. {total}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" ref={formRef}>
           {/* Main Form */}

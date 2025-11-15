@@ -223,7 +223,7 @@ export default function Wishlist() {
                       try {
                         const pid = String(item.id);
                         // fetch product to check status and price if possible
-                        const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                        const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
                         const resp = await fetch(`${apiBase}/api/products/${pid}`);
                         if (!resp.ok) throw new Error('Failed to fetch product');
                         const prod = await resp.json();

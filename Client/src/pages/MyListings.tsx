@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function MyListings() {
   const { token, user } = useAuth();
-  const apiBase = useMemo(() => import.meta.env.VITE_API_URL || "http://localhost:5000", []);
+  const apiBase = useMemo(() => import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app", []);
   const headers = useMemo(() => token ? { Authorization: `Bearer ${token}` } : {}, [token]);
 
   const [items, setItems] = useState<any[]>([]);

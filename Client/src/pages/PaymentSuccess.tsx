@@ -9,7 +9,7 @@ export default function PaymentSuccess() {
   const orderIdFromQuery = params.get('orderId');
   const [status, setStatus] = useState<'verifying' | 'ok' | 'fail'>('verifying');
   const [orderId, setOrderId] = useState<number | null>(null);
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
 
   useEffect(() => {
     let active = true;

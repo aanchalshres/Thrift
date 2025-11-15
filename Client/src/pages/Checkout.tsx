@@ -71,7 +71,7 @@ export default function Checkout() {
   const taxes = subtotal * TAX_RATE;
   const shipping = cartItems.length > 0 ? 200 : 0;
   const total = subtotal + taxes + shipping;
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   const simulateBankPayment = async (data: FormData) =>
     new Promise((resolve, reject) =>

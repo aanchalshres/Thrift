@@ -31,7 +31,7 @@ export default function Profile() {
 
   useEffect(() => setForm(initial), [initial]);
 
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   async function onSaveProfile() {
     if (!user?.id) return;

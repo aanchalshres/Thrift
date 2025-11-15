@@ -80,7 +80,7 @@ const Shop = () => {
   const initialCat = (searchParams.get('category') || 'all').toLowerCase();
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCat);
   const [searchQuery, setSearchQuery] = useState(initialQ);
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(() => {
     try {
       const raw = JSON.parse(localStorage.getItem("wishlist") || "[]");

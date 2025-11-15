@@ -53,7 +53,8 @@ export const SignUp = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
+      const response = await fetch(`${apiBase}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),

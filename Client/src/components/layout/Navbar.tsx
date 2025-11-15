@@ -20,7 +20,7 @@ export const Navbar = () => {
   const { isAuthenticated, user, token, logout } = useAuth(); // include token
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const apiBase = useMemo(() => import.meta.env.VITE_API_URL || 'http://localhost:5000', []);
+  const apiBase = useMemo(() => import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app', []);
 
   // notifications state
   const [notifications, setNotifications] = useState<any[]>([]);

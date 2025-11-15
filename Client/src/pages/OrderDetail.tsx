@@ -11,7 +11,7 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);

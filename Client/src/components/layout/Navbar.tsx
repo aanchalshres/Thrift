@@ -236,9 +236,26 @@ export const Navbar = () => {
                 {!notifLoading && !notifError && notifications.slice(0, 10).map((n) => {
                   let data: any = {};
                   try { data = n.payload ? JSON.parse(n.payload) : {}; } catch {}
-                  const title = data?.title || 'Update';
-                  const preview = data?.preview || '';
-                  const productId = data?.productId;
+                  
+                  // Generate title and preview based on notification type
+                  let title = 'Update';
+                  let preview = '';
+                  let productId = data?.productId;
+                  
+                  if (n.type === 'message') {
+                    title = data?.title || 'New Message';
+                    preview = data?.preview || '';
+                  } else if (n.type === 'order_placed') {
+                    title = `New Order #${data?.orderId || ''}`;
+                    preview = data?.items ? `${data.itemCount || 1} item(s) - Rs. ${data.total || 0}` : '';
+                  } else if (n.type === 'order_cancelled') {
+                    title = `Order #${data?.orderId || ''} Cancelled`;
+                    preview = 'Buyer cancelled their order';
+                  } else {
+                    title = data?.title || 'Update';
+                    preview = data?.preview || '';
+                  }
+                  
                   const isUnread = !n.read_at;
                   return (
                     <DropdownMenuItem
@@ -255,6 +272,8 @@ export const Navbar = () => {
                         }
                         if (n.type === 'message') {
                           navigate('/messages');
+                        } else if (n.type === 'order_placed' || n.type === 'order_cancelled') {
+                          navigate('/orders?tab=sold');
                         } else if (productId) {
                           navigate(`/product/${productId}`);
                         }

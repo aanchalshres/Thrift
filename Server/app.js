@@ -24,23 +24,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ===== Middleware =====
-// CORS configuration
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:8080',
-  'https://your-vercel-app.vercel.app', // Replace with your actual Vercel URL
-];
-
+// CORS configuration - Allow all origins for now
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -84,7 +70,6 @@ app.use((err, req, res, next) => {
 });
 
 // ===== Start server with database initialization =====
-// ← Replace app.listen() with this async wrapper
 (async () => {
   try {
     await initDb(); // Initialize database and tables

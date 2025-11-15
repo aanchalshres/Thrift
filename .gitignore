@@ -14,7 +14,9 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.production
 !Client/.env.example
+!Client/.env.production
 !Server/.env.example
 
 # Editor/OS

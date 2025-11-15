@@ -10,11 +10,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Plus } from 'lucide-react';
+import { Upload, X, Plus, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const Sell = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -37,6 +45,11 @@ const Sell = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
+
+  // My Orders state
+  const [showMyOrders, setShowMyOrders] = useState(false);
+  const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -67,6 +80,31 @@ const Sell = () => {
       });
     };
   }, [images]);
+
+  // Fetch seller orders
+  useEffect(() => {
+    if (showMyOrders && token) {
+      fetchMyOrders();
+    }
+  }, [showMyOrders, token]);
+
+  const fetchMyOrders = async () => {
+    if (!token) return;
+    setOrdersLoading(true);
+    try {
+      const resp = await fetch(`${apiBase}/api/orders/sold`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setMyOrders(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch orders:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   function addFiles(newFiles: File[]) {
     if (!Array.isArray(newFiles) || newFiles.length === 0) return;
@@ -191,13 +229,66 @@ const Sell = () => {
                 <Button asChild variant="outline" className="hover:bg-[hsl(var(--thrift-green))]/10">
                   <Link to="/my-listings">My Listings</Link>
                 </Button>
-                <Button asChild variant="outline" className="hover:bg-[hsl(var(--thrift-green))]/10">
-                  <Link to="/profile?tab=sold">My Orders</Link>
+                <Button 
+                  variant="outline" 
+                  className="hover:bg-[hsl(var(--thrift-green))]/10"
+                  onClick={() => setShowMyOrders(!showMyOrders)}
+                >
+                  <Package className="w-4 h-4 mr-2" />
+                  {showMyOrders ? 'Hide' : 'My Orders'}
                 </Button>
               </div>
             )}
           </div>
         </div>
+
+        {/* My Orders Section */}
+        {showMyOrders && token && (
+          <div className="bg-card rounded-lg border p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            <h2 className="text-xl font-semibold mb-4">My Sales Orders</h2>
+            {ordersLoading ? (
+              <p className="text-muted-foreground">Loading orders...</p>
+            ) : myOrders.length === 0 ? (
+              <p className="text-muted-foreground">No orders yet. Your sales will appear here.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Buyer</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {myOrders.map((order) => {
+                      const total = (order.items || []).reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+                      return (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-medium">#{order.id}</TableCell>
+                          <TableCell>{order.buyer_name || 'Anonymous'}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {(order.items || []).map((item: any, idx: number) => (
+                                <div key={idx}>{item.title}</div>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">Rs. {total}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" ref={formRef}>
           {/* Main Form */}

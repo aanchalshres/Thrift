@@ -273,7 +273,7 @@ export const Navbar = () => {
                         if (n.type === 'message') {
                           navigate('/messages');
                         } else if (n.type === 'order_placed' || n.type === 'order_cancelled') {
-                          navigate('/orders?tab=sold');
+                          navigate('/profile');
                         } else if (productId) {
                           navigate(`/product/${productId}`);
                         }

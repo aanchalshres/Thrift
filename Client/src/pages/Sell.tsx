@@ -187,9 +187,12 @@ const Sell = () => {
               </p>
             </div>
             {token && (
-              <div className="pt-1">
+              <div className="pt-1 flex gap-2">
                 <Button asChild variant="outline" className="hover:bg-[hsl(var(--thrift-green))]/10">
                   <Link to="/my-listings">My Listings</Link>
+                </Button>
+                <Button asChild variant="outline" className="hover:bg-[hsl(var(--thrift-green))]/10">
+                  <Link to="/profile?tab=sold">My Orders</Link>
                 </Button>
               </div>
             )}

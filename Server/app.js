@@ -25,19 +25,27 @@ const PORT = process.env.PORT || 5000;
 
 // ===== Middleware =====
 // CORS configuration
+// Allow listed local dev origins, primary production domain, and branch/preview deployments.
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
-  'https://thriftsyy.vercel.app',
+  'https://thriftsyy.vercel.app', // main production domain
 ];
+
+const vercelPreviewRegex = /^https:\/\/thriftsyy-[a-z0-9-]+\.vercel\.app$/i;
+const vercelProjectPreviewRegex = /^https:\/\/thriftsyy-[a-z0-9-]+-aachal-shresthas-projects\.vercel\.app$/i;
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or curl)
     if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowedOrigins or if not in production
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      vercelPreviewRegex.test(origin) ||
+      vercelProjectPreviewRegex.test(origin) ||
+      process.env.NODE_ENV !== 'production';
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);

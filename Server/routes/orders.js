@@ -117,41 +117,6 @@ router.post("/", async (req, res) => {
             salesParams
           );
         }
-
-        // Send in-app notifications to sellers
-        const uniqueSellers = new Set(Array.from(sellerByProduct.values()).filter(Boolean));
-        if (uniqueSellers.size > 0) {
-          const sellerIds = Array.from(uniqueSellers);
-          const [sellerRows] = await conn.query(
-            `SELECT id, name FROM users WHERE id IN (${sellerIds.map(() => '?').join(',')})`,
-            sellerIds
-          );
-          for (const seller of Array.isArray(sellerRows) ? sellerRows : []) {
-            const sellerItems = items.filter(it => sellerByProduct.get(Number(it.productId)) === seller.id);
-            const totalAmount = sellerItems.reduce((sum, it) => sum + Number(it.price || 0), 0);
-            const itemTitles = sellerItems.map(it => it.title || 'Product').join(', ');
-            try {
-              const payload = JSON.stringify({
-                orderId,
-                items: itemTitles,
-                total: totalAmount,
-                itemCount: sellerItems.length
-              });
-              const [nres] = await conn.query(
-                'INSERT INTO notifications (user_id, type, payload) VALUES (?, ?, ?)',
-                [seller.id, 'order_placed', payload]
-              );
-              if (nres && nres.insertId) {
-                const [nrows] = await conn.query('SELECT * FROM notifications WHERE id = ?', [nres.insertId]);
-                if (Array.isArray(nrows) && nrows[0]) {
-                  notify.send(seller.id, 'notification', nrows[0]);
-                }
-              }
-            } catch (notifyErr) {
-              console.warn('Failed to create notification for seller:', seller.id, notifyErr && notifyErr.message);
-            }
-          }
-        }
       } catch (e) {
         console.warn('seller_sales insert warning:', e && e.message ? e.message : e);
       }
@@ -353,31 +318,7 @@ router.put('/:id', async (req, res) => {
         console.warn('failed to revert product statuses on cancel:', e && e.message ? e.message : e);
       }
 
-      // Notify involved sellers (seller_sales)
-      try {
-        const [sellers] = await conn.query(
-          `SELECT DISTINCT s.seller_id FROM seller_sales s WHERE s.order_id = ?`, [id]
-        );
-        for (const s of (Array.isArray(sellers) ? sellers : [])) {
-          try {
-            const payload = JSON.stringify({ orderId: id, status: 'cancelled' });
-            const [nres] = await conn.query(
-              'INSERT INTO notifications (user_id, type, payload) VALUES (?, ?, ?)',
-              [s.seller_id, 'order_cancelled', payload]
-            );
-            if (nres && nres.insertId) {
-              const [nrows] = await conn.query('SELECT * FROM notifications WHERE id = ?', [nres.insertId]);
-              if (Array.isArray(nrows) && nrows[0]) {
-                notify.send(s.seller_id, 'notification', nrows[0]);
-              }
-            }
-          } catch (notifyErr) {
-            console.warn('Failed to notify seller:', s.seller_id, notifyErr && notifyErr.message);
-          }
-        }
-      } catch (e) {
-        console.warn('notify sellers error:', e && e.message ? e.message : e);
-      }
+
     }
 
     // Allow updating payment_status by buyer only as a simple patch (rare)

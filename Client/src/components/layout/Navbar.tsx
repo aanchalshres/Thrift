@@ -246,11 +246,11 @@ export const Navbar = () => {
                     title = 'New Message';
                     preview = data?.preview || data?.from ? `From: ${data.from}` : 'You have a new message';
                   } else if (n.type === 'order_placed') {
-                    title = 'Your order is placed!';
-                    preview = `Order #${data?.orderId || ''} - ${data.itemCount || 1} item(s) for Rs. ${data.total || 0}`;
+                    title = `Order #${data?.orderId || ''}`;
+                    preview = `${data.itemCount || 1} item(s) - Rs. ${data.total || 0}`;
                   } else if (n.type === 'order_cancelled') {
-                    title = 'Order Cancelled';
-                    preview = `Order #${data?.orderId || ''} has been cancelled by the buyer`;
+                    title = `Order #${data?.orderId || ''} Cancelled`;
+                    preview = 'Buyer cancelled the order';
                   } else {
                     title = data?.title || n.type || 'Update';
                     preview = data?.preview || '';

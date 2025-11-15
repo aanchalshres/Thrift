@@ -209,7 +209,42 @@ Client:
   
 - **Images not loading in production**:
   - Railway ephemeral filesystem: uploaded images are lost on restart
-  - Consider using cloud storage (Cloudinary, AWS S3, etc.) for production
+  - Solution: Use Cloudinary free tier (see below)
+
+### Persistent Product Images (Cloudinary Free Tier)
+The server supports optional Cloudinary uploads when `CLOUDINARY_CLOUD_NAME` and related env vars are set.
+
+**Setup (No credit card required)**:
+1. Sign up at https://cloudinary.com (free tier: 25 credits/month = plenty for small projects)
+2. Get credentials from Dashboard → Account Details:
+   - Cloud Name
+   - API Key
+   - API Secret
+3. Add to Railway environment variables:
+```
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=thrift-products
+```
+4. Redeploy backend
+5. Upload a new product—images will be stored at Cloudinary CDN URLs
+
+**How it works**:
+- If Cloudinary vars are present:
+  - Switches multer to memory storage (no disk writes)
+  - Uploads each image via stream to Cloudinary folder
+  - Stores full HTTPS CDN URLs in `product_images.image_url` and `products.image`
+- If not configured: falls back to legacy `/uploads/` disk path (ephemeral)
+
+**Migration**:
+- Existing products with `/uploads/` images remain broken after redeploy
+- Re-edit important products (PUT with `replaceImages=true`) to migrate to Cloudinary
+
+**Free Tier Limits**:
+- 25 credits/month (1 credit ≈ 1 transformation or several uploads)
+- 25GB storage, 25GB bandwidth
+- More than enough for prototype/demo projects
 
 ## Bulk import products (CSV)
 

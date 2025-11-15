@@ -11,15 +11,29 @@ const poolMain = pool;
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`;
-    cb(null, name);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB per file
+const cloudinary = require('cloudinary').v2;
+
+const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+let upload;
+
+if (useCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+} else {
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.jpg';
+      const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`;
+      cb(null, name);
+    },
+  });
+  upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB per file
+}
 
 function filenameFromUrl(url) {
   try {
@@ -239,16 +253,37 @@ router.post('/', upload.array('images', 8), async (req, res) => {
 
     const files = Array.isArray(req.files) ? req.files : [];
     if (files.length > 0) {
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const placeholders = files.map(() => '(?, ?)').join(', ');
-      const params = files.flatMap(f => [productId, `${baseUrl}/uploads/${f.filename}`]);
-      await conn.query(
-        `INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`,
-        params
-      );
-
-      const firstUrl = `${baseUrl}/uploads/${files[0].filename}`;
-      await conn.query(`UPDATE products SET image = ? WHERE id = ?`, [firstUrl, productId]);
+      if (useCloudinary) {
+        const uploadedUrls = [];
+        const folder = process.env.CLOUDINARY_FOLDER || 'thrift-products';
+        for (const file of files) {
+          const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              { folder, resource_type: 'auto' },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            uploadStream.end(file.buffer);
+          });
+          uploadedUrls.push(result.secure_url);
+        }
+        const placeholders = uploadedUrls.map(() => '(?, ?)').join(', ');
+        const params = uploadedUrls.flatMap(u => [productId, u]);
+        await conn.query(`INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`, params);
+        await conn.query(`UPDATE products SET image = ? WHERE id = ?`, [uploadedUrls[0], productId]);
+      } else {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const placeholders = files.map(() => '(?, ?)').join(', ');
+        const params = files.flatMap(f => [productId, `${baseUrl}/uploads/${f.filename}`]);
+        await conn.query(
+          `INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`,
+          params
+        );
+        const firstUrl = `${baseUrl}/uploads/${files[0].filename}`;
+        await conn.query(`UPDATE products SET image = ? WHERE id = ?`, [firstUrl, productId]);
+      }
     }
 
     await conn.commit();
@@ -388,19 +423,46 @@ router.put('/:id', upload.array('images', 8), async (req, res) => {
     }
 
     if (files.length > 0) {
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const placeholders = files.map(() => '(?, ?)').join(', ');
-      const params2 = files.flatMap(f => [id, `${baseUrl}/uploads/${f.filename}`]);
-      await conn.query(`INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`, params2);
-
-      // if replacing, or if product has no main image, set main image to first new file
-      const firstUrl = `${baseUrl}/uploads/${files[0].filename}`;
-      if (shouldReplace) {
-        await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+      if (useCloudinary) {
+        const uploadedUrls = [];
+        const folder = process.env.CLOUDINARY_FOLDER || 'thrift-products';
+        for (const file of files) {
+          const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              { folder, resource_type: 'auto' },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            uploadStream.end(file.buffer);
+          });
+          uploadedUrls.push(result.secure_url);
+        }
+        const placeholders = uploadedUrls.map(() => '(?, ?)').join(', ');
+        const params2 = uploadedUrls.flatMap(u => [id, u]);
+        await conn.query(`INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`, params2);
+        const firstUrl = uploadedUrls[0];
+        if (shouldReplace) {
+          await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+        } else {
+          const [prow] = await conn.query('SELECT image FROM products WHERE id = ?', [id]);
+          const cur = Array.isArray(prow) && prow[0] ? prow[0].image : null;
+          if (!cur) await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+        }
       } else {
-        const [prow] = await conn.query('SELECT image FROM products WHERE id = ?', [id]);
-        const cur = Array.isArray(prow) && prow[0] ? prow[0].image : null;
-        if (!cur) await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const placeholders = files.map(() => '(?, ?)').join(', ');
+        const params2 = files.flatMap(f => [id, `${baseUrl}/uploads/${f.filename}`]);
+        await conn.query(`INSERT INTO product_images (product_id, image_url) VALUES ${placeholders}`, params2);
+        const firstUrl = `${baseUrl}/uploads/${files[0].filename}`;
+        if (shouldReplace) {
+          await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+        } else {
+          const [prow] = await conn.query('SELECT image FROM products WHERE id = ?', [id]);
+          const cur = Array.isArray(prow) && prow[0] ? prow[0].image : null;
+          if (!cur) await conn.query('UPDATE products SET image = ? WHERE id = ?', [firstUrl, id]);
+        }
       }
     }
 

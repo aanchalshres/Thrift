@@ -59,6 +59,7 @@ export const Donate = () => {
   const categories = [
     "Women's Clothing",
     "Men's Clothing",
+    "Unisex",
     "Kids' Clothing",
     "Accessories",
     "Shoes",

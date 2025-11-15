@@ -466,6 +466,7 @@ const Shop = () => {
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="women">Women's Clothing</SelectItem>
                 <SelectItem value="men">Men's Clothing</SelectItem>
+                <SelectItem value="unisex">Unisex</SelectItem>
                 <SelectItem value="kids">Kids' Clothing</SelectItem>
                 <SelectItem value="accessories">Accessories</SelectItem>
                 <SelectItem value="shoes">Shoes</SelectItem>

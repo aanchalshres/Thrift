@@ -30,6 +30,13 @@ export const CategorySection = () => {
       count: "1,800+ items",
     },
     {
+      label: "Unisex",
+      value: "unisex",
+      image: "https://images.unsplash.com/photo-1542272604-787c62d465d1?auto=format&fit=crop&w=1200&q=60",
+      color: "from-indigo-500/30 to-purple-500/30",
+      count: "500+ items",
+    },
+    {
       label: "Kids' Clothing",
       value: "kids",
       image: "images/kids.jpg",

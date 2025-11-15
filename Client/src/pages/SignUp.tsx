@@ -54,6 +54,7 @@ export const SignUp = () => {
 
     try {
       const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
+      console.log('[SignUp] Using apiBase:', apiBase, 'VITE_API_URL raw:', import.meta.env.VITE_API_URL);
       const response = await fetch(`${apiBase}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

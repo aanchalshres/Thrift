@@ -243,16 +243,16 @@ export const Navbar = () => {
                   let productId = data?.productId;
                   
                   if (n.type === 'message') {
-                    title = data?.title || 'New Message';
-                    preview = data?.preview || '';
+                    title = 'New Message';
+                    preview = data?.preview || data?.from ? `From: ${data.from}` : 'You have a new message';
                   } else if (n.type === 'order_placed') {
-                    title = `New Order #${data?.orderId || ''}`;
-                    preview = data?.items ? `${data.itemCount || 1} item(s) - Rs. ${data.total || 0}` : '';
+                    title = 'Your order is placed!';
+                    preview = `Order #${data?.orderId || ''} - ${data.itemCount || 1} item(s) for Rs. ${data.total || 0}`;
                   } else if (n.type === 'order_cancelled') {
-                    title = `Order #${data?.orderId || ''} Cancelled`;
-                    preview = 'Buyer cancelled their order';
+                    title = 'Order Cancelled';
+                    preview = `Order #${data?.orderId || ''} has been cancelled by the buyer`;
                   } else {
-                    title = data?.title || 'Update';
+                    title = data?.title || n.type || 'Update';
                     preview = data?.preview || '';
                   }
                   

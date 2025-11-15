@@ -27,7 +27,7 @@ interface Listing {
 }
 
 // Canonical category mapping to keep Home -> Shop links and backend data consistent
-const CATEGORY_CANON = ["women", "men", "kids", "accessories", "shoes"] as const;
+const CATEGORY_CANON = ["women", "men", "unisex", "kids", "accessories", "shoes"] as const;
 type CanonCategory = typeof CATEGORY_CANON[number] | "all";
 
 const canonicalizeCategory = (raw: string | null | undefined): CanonCategory => {

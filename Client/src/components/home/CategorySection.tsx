@@ -32,7 +32,7 @@ export const CategorySection = () => {
     {
       label: "Unisex",
       value: "unisex",
-      image: "https://images.unsplash.com/photo-1542272604-787c62d465d1?auto=format&fit=crop&w=1200&q=60",
+      image: "images/unisex.jpg",
       color: "from-indigo-500/30 to-purple-500/30",
       count: "500+ items",
     },

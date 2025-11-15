@@ -24,9 +24,26 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ===== Middleware =====
-// CORS configuration - Allow all origins for now
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'https://thriftsyy.vercel.app',
+];
+
 app.use(cors({
-  origin: true,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or curl)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowedOrigins or if not in production
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());

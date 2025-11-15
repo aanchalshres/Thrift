@@ -173,7 +173,9 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Button variant="ghost" onClick={() => navigate('/shop')} className="mb-6">← Back to Shop</Button>
+        <div className="mb-4">
+          <Button variant="ghost" onClick={() => navigate('/shop')}>← Back to Shop</Button>
+        </div>
         <p>Loading...</p>
       </div>
     );
@@ -182,7 +184,9 @@ export default function ProductDetail() {
   if (error || !product) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">← Back</Button>
+        <div className="mb-4">
+          <Button variant="ghost" onClick={() => navigate(-1)}>← Back</Button>
+        </div>
         <p className="text-destructive">{error || "Product not found"}</p>
       </div>
     );
@@ -190,9 +194,11 @@ export default function ProductDetail() {
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <Button variant="ghost" onClick={() => navigate('/shop')} className="mb-6">
-        ← Back to Shop
-      </Button>
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => navigate('/shop')}>
+          ← Back to Shop
+        </Button>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-12">
         {/* Product Images */}

@@ -201,15 +201,20 @@ export default function OrderDetail() {
   if (loading) return (<div className="container mx-auto px-4 py-16">Loading...</div>);
   if (error) return (
     <div className="container mx-auto px-4 py-16">
-      <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">← Back</Button>
+      <div className="mb-4">
+        <Button variant="ghost" onClick={() => navigate(-1)}>← Back</Button>
+      </div>
       <Card className="border-none shadow-sm"><CardContent className="p-6 text-destructive">{error}</CardContent></Card>
     </div>
   );
 
   return (
-    <div className="container mx-auto px-4 py-10 flex justify-center">
-  <Button variant="ghost" onClick={() => navigate('/profile?tab=orders')} className="mb-6">← Back to Orders</Button>
-      <Card className="border-none shadow-sm bg-card w-full max-w-2xl">
+    <div className="container mx-auto px-4 py-10">
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => navigate('/profile?tab=orders')}>← Back to Orders</Button>
+      </div>
+      <div className="flex justify-center">
+        <Card className="border-none shadow-sm bg-card w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-center">Order Details</CardTitle>
         </CardHeader>
@@ -332,6 +337,7 @@ export default function OrderDetail() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -291,13 +291,13 @@ const Sell = () => {
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-4 py-10">
+          <div className="mb-4">
+            <Button variant="ghost" onClick={() => setShowMyListings(false)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Sell
+            </Button>
+          </div>
           <div className="mb-8 text-center">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <Button variant="ghost" onClick={() => setShowMyListings(false)}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Sell
-              </Button>
-            </div>
             <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">My Listings</h1>
           </div>
 
@@ -397,13 +397,13 @@ const Sell = () => {
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-4 py-10">
+          <div className="mb-4">
+            <Button variant="ghost" onClick={() => setShowMyOrders(false)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Sell
+            </Button>
+          </div>
           <div className="mb-8 text-center">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <Button variant="ghost" onClick={() => setShowMyOrders(false)}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Sell
-              </Button>
-            </div>
             <h1 className="text-3xl font-bold mb-2 text-[hsl(var(--thrift-green))]">My Sales Orders</h1>
           </div>
 

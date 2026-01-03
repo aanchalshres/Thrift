@@ -4,37 +4,91 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@mui/material";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import { CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Cart() {
   const [cart, setCart] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  useEffect(() => {
-    const c = JSON.parse(localStorage.getItem("cart") || "[]");
-    const arr = Array.isArray(c) ? c : [];
-    // Normalize to single-quantity unique items
-    const map = new Map<string, any>();
-    for (const it of arr) {
-      const idStr = String(it?.id);
-      if (!map.has(idStr)) {
-        map.set(idStr, { ...it, id: idStr, quantity: 1 });
-      }
-    }
-    const normalized = Array.from(map.values());
-    try { localStorage.setItem("cart", JSON.stringify(normalized)); } catch {}
-    setCart(normalized);
-  }, []);
+  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const { token, isAuthenticated, loading: authLoading } = useAuth();
 
-  const clearCart = () => {
-    localStorage.setItem("cart", JSON.stringify([]));
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated || !token) { setCart([]); setLoading(false); return; }
+    fetchCart();
+  }, [isAuthenticated, token, authLoading]);
+
+  const fetchCart = async () => {
+    if (!isAuthenticated || !token) { setCart([]); setLoading(false); return; }
+
+    try {
+      const response = await fetch(`${apiBase}/api/cart`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+        try {
+          window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: data.length } }));
+        } catch {}
+      } else {
+        console.error("Failed to fetch cart from database");
+        setCart([]);
+      }
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+      setCart([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearCart = async () => {
+    if (isAuthenticated && token) {
+      try {
+        const response = await fetch(`${apiBase}/api/cart`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          console.log("Cart cleared from database");
+        } else {
+          const error = await response.json();
+          console.error("Failed to clear cart from DB:", error);
+        }
+      } catch (error) {
+        console.error("Error clearing cart:", error);
+      }
+    } else {
+      alert('Please sign in to manage your cart.');
+      try { navigate('/signin?next=%2Fcart'); } catch {}
+      return;
+    }
+    
     setCart([]);
     try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } })); } catch {}
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const subtotal = cart.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0);
   const TAX_RATE = Number(import.meta.env.VITE_TAX_RATE ?? 0);
   const taxes = subtotal * TAX_RATE;
   const shipping = cart.length > 0 ? 200 : 0;
   const total = subtotal + taxes + shipping;
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p className="text-center">Loading cart...</p>
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -59,18 +113,42 @@ export default function Cart() {
     );
   }
 
-  function removeItem(id: any): void {
-    setCart((prev) => {
-      const idStr = String(id);
-      const filtered = prev.filter((it) => String(it.id) !== idStr);
-      localStorage.setItem("cart", JSON.stringify(filtered));
-      try {
-        const totalQty = filtered.reduce((sum, it) => sum + (Number(it.quantity ?? 1) || 1), 0);
-        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: totalQty } }));
-      } catch {}
-      return filtered;
-    });
+  async function removeItem(id: any): Promise<void> {
+    console.log("Attempting to remove item with ID:", id);
+    
+    if (!isAuthenticated || !token) {
+      alert('Please sign in to manage your cart.');
+      try { navigate('/signin?next=%2Fcart'); } catch {}
+      return;
+    }
+
+    try {
+      console.log(`Calling DELETE ${apiBase}/api/cart/${id}`);
+      const response = await fetch(`${apiBase}/api/cart/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      console.log("Delete response status:", response.status);
+      
+      if (response.ok) {
+        console.log("Successfully removed from DB, refetching cart");
+        // Reload entire cart from database
+        await fetchCart();
+      } else {
+        const error = await response.json();
+        console.error("Backend delete failed:", error);
+        alert(`Failed to remove item: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Network error removing from cart:", error);
+      alert('Network error - item not removed');
+    }
   }
+
+  // Client-side cart UI updates are removed; cart state comes from server only
 
   return (
     <div className="container mx-auto px-4 py-8">

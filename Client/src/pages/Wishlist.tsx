@@ -223,45 +223,23 @@ export default function Wishlist() {
                     e.stopPropagation();
                     // add to cart helper
                     (async () => {
+                      // Server-only add to cart, require auth
                       try {
-                        const pid = String(item.id);
-                        // fetch product to check status and price if possible
                         const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
+                        if (!isAuthenticated || !token) { toast.error('Please sign in first'); return; }
+                        const pid = String(item.id);
                         const resp = await fetch(`${apiBase}/api/products/${pid}`);
                         if (!resp.ok) throw new Error('Failed to fetch product');
                         const prod = await resp.json();
                         const st = String(prod.status || prod.product_status || '').toLowerCase();
-                        if (st && st !== 'unsold') {
-                          toast.error('Item cannot be added to cart', { description: `This listing is ${st.replace('_',' ')}` });
-                          return;
-                        }
-                        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                        const idx = (Array.isArray(cart) ? cart : []).findIndex((c: any) => String(c.id) === pid);
-                        if (idx >= 0) {
-                          try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: cart.length } })); } catch {}
-                          toast.info('Item already in cart', { description: item.title });
-                          return;
-                        }
-                        const image = item.image || (Array.isArray(prod.images) && prod.images.length ? prod.images[0] : (prod.image || ""));
-                        const price = Number(prod.price || item.price || 0);
-                        const next = Array.isArray(cart) ? [...cart, { id: pid, title: item.title || prod.title || `Product #${pid}`, price, image, quantity: 1 }] : [{ id: pid, title: item.title || prod.title || `Product #${pid}`, price, image, quantity: 1 }];
-                        localStorage.setItem('cart', JSON.stringify(next));
-                        try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: next.length } })); } catch {}
+                        if (st && st !== 'unsold') { toast.error('Item cannot be added to cart', { description: `This listing is ${st.replace('_',' ')}` }); return; }
+                        const add = await fetch(`${apiBase}/api/cart/add`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ productId: pid, quantity: 1 }) });
+                        if (!add.ok) { const er = await add.json().catch(() => ({})); toast.error(er.error || 'Failed to add to cart'); return; }
+                        const cartResp = await fetch(`${apiBase}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+                        if (cartResp.ok) { const cart = await cartResp.json(); try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: Array.isArray(cart) ? cart.length : 0 } })); } catch {} }
                         toast.success('Added to cart', { description: item.title });
                       } catch (e: any) {
-                        // fallback: try minimal add
-                        try {
-                          const pid = String(item.id);
-                          const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                          const idx = (Array.isArray(cart) ? cart : []).findIndex((c: any) => String(c.id) === pid);
-                          if (idx >= 0) { toast.info('Item already in cart'); return; }
-                          const next = Array.isArray(cart) ? [...cart, { id: pid, title: item.title, price: Number(item.price || 0), image: item.image || '', quantity: 1 }] : [{ id: pid, title: item.title, price: Number(item.price || 0), image: item.image || '', quantity: 1 }];
-                          localStorage.setItem('cart', JSON.stringify(next));
-                          try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: next.length } })); } catch {}
-                          toast.success('Added to cart', { description: item.title });
-                        } catch (ee) {
-                          toast.error('Unable to add to cart');
-                        }
+                        toast.error('Unable to add to cart');
                       }
                     })();
                   }}

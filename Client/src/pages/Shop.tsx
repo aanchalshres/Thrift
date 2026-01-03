@@ -339,7 +339,7 @@ const Shop = () => {
   }, []);
 
   // Add to cart: requires auth; single-quantity thrift items (no duplicates)
-  const addToCart = (listing: Listing) => {
+  const addToCart = async (listing: Listing) => {
     if (!isAuthenticated) {
       const next = encodeURIComponent(location.pathname + location.search);
       toast("Please sign in to add items", { description: "You need an account to use the cart." });
@@ -351,26 +351,44 @@ const Shop = () => {
       toast.error('Item cannot be added to cart', { description: `This listing is ${st.replace('_',' ')}` });
       return;
     }
-    const cart: Array<{ id: string; title: string; price: number; image: string; quantity?: number }> =
-      JSON.parse(localStorage.getItem("cart") || "[]");
 
-    const idx = cart.findIndex((c) => String(c.id) === String(listing.id));
-    if (idx >= 0) {
-      // Already in cart: keep single item, notify
-      try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cart.length } })); } catch {}
-      toast.info("Item already in cart", { description: listing.title });
-      return;
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiBase}/api/cart/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productId: listing.id, quantity: 1 }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Fetch updated cart from database
+        const cartResponse = await fetch(`${apiBase}/api/cart`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (cartResponse.ok) {
+          const cartData = await cartResponse.json();
+          try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cartData.length } })); } catch {}
+        }
+        
+        if (result.message === 'Cart updated') {
+          toast.info("Item already in cart", { description: listing.title });
+        } else {
+          toast.success("Added to cart", { description: listing.title });
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to add to cart");
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add to cart");
     }
-    cart.push({
-      id: String(listing.id),
-      title: listing.title,
-      price: listing.price,
-      image: listing.images[0] || "",
-      quantity: 1,
-    });
-    localStorage.setItem("cart", JSON.stringify(cart));
-    try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cart.length } })); } catch {}
-    toast.success("Added to cart", { description: listing.title });
   };
 
   const toggleWishlist = async (id: string) => {

@@ -55,30 +55,31 @@ export const Navbar = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, token, apiBase]);
 
-  // Cart count: initialize only when authenticated; reset to 0 when logged out
+  // Cart count: fetch from server when authenticated; no localStorage
   useEffect(() => {
-    const compute = (): number => {
-      if (!isAuthenticated) return 0; // hide count when not logged in
+    let active = true;
+    const refresh = async () => {
+      if (!isAuthenticated || !token) { if (active) setCartCount(0); return; }
       try {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        if (!Array.isArray(cart)) return 0;
-        return cart.reduce((sum: number, item: any) => sum + (Number(item?.quantity ?? 1) || 1), 0);
-      } catch { return 0; }
+        const resp = await fetch(`${apiBase}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!active) return;
+        if (resp.ok) {
+          const data = await resp.json();
+          setCartCount(Array.isArray(data) ? data.length : 0);
+        } else {
+          setCartCount(0);
+        }
+      } catch { if (active) setCartCount(0); }
     };
-    setCartCount(compute());
-    const onStorage = (e: StorageEvent) => { if (e.key === 'cart') setCartCount(compute()); };
+    refresh();
     const onCartUpdated = (e: Event) => {
+      if (!isAuthenticated || !token) { setCartCount(0); return; }
       const ev = e as CustomEvent<{ count?: number }>;
-      if (!isAuthenticated) { setCartCount(0); return; }
-      if (typeof ev.detail?.count === 'number') setCartCount(ev.detail.count); else setCartCount(compute());
+      if (typeof ev.detail?.count === 'number') setCartCount(ev.detail.count); else refresh();
     };
-    window.addEventListener('storage', onStorage);
     window.addEventListener('cartUpdated', onCartUpdated as EventListener);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('cartUpdated', onCartUpdated as EventListener);
-    };
-  }, [isAuthenticated]);
+    return () => { active = false; window.removeEventListener('cartUpdated', onCartUpdated as EventListener); };
+  }, [isAuthenticated, token, apiBase]);
 
   // Real-time notifications via SSE
   useEffect(() => {

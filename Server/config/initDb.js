@@ -2,76 +2,49 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 async function initDb() {
-  let dbConfig;
-  let DB_NAME;
+  const {
+    DB_HOST = 'localhost',
+    DB_PORT = 3306,
+    DB_USER = 'root',
+    DB_PASS = '',
+    DB_NAME = 'thriftsydb',
+  } = process.env;
 
-  // Support MYSQL_URL (Railway internal), DATABASE_URL, or individual params
-  if (process.env.MYSQL_URL) {
-    const url = new URL(process.env.MYSQL_URL);
-    dbConfig = {
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: url.username,
-      password: url.password,
-    };
-    DB_NAME = url.pathname.slice(1);
-    console.log(`Using MYSQL_URL (Railway internal): ${url.hostname}/${DB_NAME}`);
-  } else if (process.env.DATABASE_URL) {
-    const url = new URL(process.env.DATABASE_URL);
-    dbConfig = {
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: url.username,
-      password: url.password,
-    };
-    DB_NAME = url.pathname.slice(1);
-    console.log(`Using DATABASE_URL: ${url.hostname}:${url.port}/${DB_NAME}`);
-  } else {
-    const {
-      DB_HOST = 'localhost',
-      DB_PORT = 3306,
-      DB_USER = 'root',
-      DB_PASS = '',
-      DB_NAME: dbName = 'thriftsydb',
-    } = process.env;
-    
-    dbConfig = {
-      host: DB_HOST,
-      port: DB_PORT,
-      user: DB_USER,
-      password: DB_PASS || '',
-    };
-    DB_NAME = dbName;
-    console.log(`Using individual config: ${DB_HOST}/${DB_NAME}`);
-  }
+  const dbConfig = {
+    host: DB_HOST,
+    port: Number(DB_PORT),
+    user: DB_USER,
+    password: DB_PASS || '',
+  };
 
-  // Ensure database exists with retry logic and extended timeouts
+  console.log(`Connecting to database at ${DB_HOST}:${DB_PORT}...`);
+
   let conn;
   let retries = 3;
   let lastError;
 
   while (retries > 0) {
     try {
-      console.log(`Attempting to connect to database... (${4 - retries}/3)`);
+      console.log(`Attempt ${4 - retries}/3`);
       conn = await mysql.createConnection({
         ...dbConfig,
         multipleStatements: true,
       });
-      console.log('Database connection established successfully');
+      console.log(`✅ Connected to database`);
       break;
     } catch (error) {
       lastError = error;
       retries--;
-      console.error(`Database connection attempt failed: ${error.message}`);
+      console.error(`❌ Connection failed: ${error.message}`);
       if (retries > 0) {
-        console.log(`Retrying in 5 seconds... (${retries} attempts remaining)`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.log(`Retrying in 3 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
   }
 
   if (!conn) {
-    throw new Error(`Failed to connect to database after 3 attempts: ${lastError.message}`);
+    throw new Error(`Failed to connect to database: ${lastError.message}`);
   }
 
   await conn.execute(
@@ -228,6 +201,20 @@ async function initDb() {
       UNIQUE KEY uq_user_product (user_id, product_id),
       CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       CONSTRAINT fk_wishlist_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+    // Cart (per-user shopping cart)
+    `CREATE TABLE IF NOT EXISTS cart_items (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id INT UNSIGNED NOT NULL,
+      product_id INT UNSIGNED NOT NULL,
+      quantity INT UNSIGNED DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_user_product (user_id, product_id),
+      CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_cart_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
     // Minimal payment ledger for reconciliation demos

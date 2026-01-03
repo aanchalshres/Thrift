@@ -49,8 +49,8 @@ export default function ProductDetail() {
   const [trustLoading, setTrustLoading] = useState(false);
   const [trustSummary, setTrustSummary] = useState<{ percentage: number; total: number; avgRating: number | null } | null>(null);
 
-  // Add to cart helper
-  const addToCart = () => {
+  // Add to cart helper via server only
+  const addToCart = async () => {
     if (!product) return;
     if (!token) {
       const next = encodeURIComponent(location.pathname + location.search);
@@ -63,26 +63,29 @@ export default function ProductDetail() {
       toast.error('Item cannot be added to cart', { description: `This listing is ${st.replace('_',' ')}` });
       return;
     }
-    const cart: Array<{ id: string; title: string; price: number; image: string; quantity?: number }> =
-      JSON.parse(localStorage.getItem("cart") || "[]");
-
-    const idStr = String(product.id);
-    const image = Array.isArray(product.images) && product.images.length > 0
-      ? product.images[0]
-      : (product.image || "");
-    const title = product.title || "Item";
-    const price = Number(product.price || 0);
-
-    const idx = cart.findIndex((c) => String(c.id) === idStr);
-    if (idx >= 0) {
-      try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cart.length } })); } catch {}
-      toast.info("Item already in cart", { description: title });
-      return;
+    try {
+      const resp = await fetch(`${apiBase}/api/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to add to cart');
+        return;
+      }
+      const result = await resp.json();
+      try {
+        const cartResp = await fetch(`${apiBase}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+        if (cartResp.ok) {
+          const items = await cartResp.json();
+          window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: Array.isArray(items) ? items.length : 0 } }));
+        }
+      } catch {}
+      if (result.message === 'Cart updated') toast.info('Item already in cart', { description: product.title }); else toast.success('Added to cart', { description: product.title });
+    } catch (e) {
+      toast.error('Failed to add to cart');
     }
-    cart.push({ id: idStr, title, price, image, quantity: 1 });
-    localStorage.setItem("cart", JSON.stringify(cart));
-    try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cart.length } })); } catch {}
-    toast.success("Added to cart", { description: title });
   };
 
   useEffect(() => {

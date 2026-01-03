@@ -52,6 +52,8 @@ router.post("/", async (req, res) => {
       idempotency_key = null,
     } = req.body;
 
+    const effectiveUserId = authUserId != null ? authUserId : (userId || null);
+
     if (idempotency_key) {
       try {
         const [existing] = await conn.query(`SELECT id FROM orders WHERE idempotency_key = ? LIMIT 1`, [String(idempotency_key)]);
@@ -70,7 +72,7 @@ router.post("/", async (req, res) => {
     const [orderResult] = await conn.query(
       `INSERT INTO orders (user_id, subtotal, tax, shipping, total, payment_method, payment_status, shipping_address, idempotency_key)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [authUserId != null ? authUserId : (userId || null), subtotal, tax, shipping, total, paymentMethod, paymentStatus, JSON.stringify(shippingAddress), idempotency_key]
+      [effectiveUserId, subtotal, tax, shipping, total, paymentMethod, paymentStatus, JSON.stringify(shippingAddress), idempotency_key]
     );
 
     const orderId = orderResult.insertId;
@@ -133,6 +135,16 @@ router.post("/", async (req, res) => {
       } catch (e) {
         console.warn('product status update warning:', e && e.message ? e.message : e);
       }
+    }
+
+    // Clear the user's cart once the order is created to avoid stale carts on reload
+    try {
+      if (effectiveUserId != null) {
+        await conn.query('DELETE FROM cart_items WHERE user_id = ?', [effectiveUserId]);
+      }
+    } catch (e) {
+      // non-fatal; do not block order creation if cart clear fails
+      try { console.warn('cart clear warning:', e && e.message ? e.message : e); } catch {}
     }
 
     await conn.commit();

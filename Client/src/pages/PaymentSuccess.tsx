@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/context/AuthContext';
 
 export default function PaymentSuccess() {
   const { search } = useLocation();
@@ -10,19 +11,18 @@ export default function PaymentSuccess() {
   const [status, setStatus] = useState<'verifying' | 'ok' | 'fail'>('verifying');
   const [orderId, setOrderId] = useState<number | null>(null);
   const apiBase = import.meta.env.VITE_API_URL || 'https://thrift-production-af9f.up.railway.app';
+  const { token } = useAuth();
 
   useEffect(() => {
     let active = true;
     async function verify() {
-      // If server already redirected with orderId, consider it verified success (server did the verification)
       if (orderIdFromQuery) {
         setOrderId(Number(orderIdFromQuery));
         setStatus('ok');
-        try {
-          localStorage.setItem('cart', JSON.stringify([]));
-          window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } }));
-          window.dispatchEvent(new CustomEvent('orderPlaced', { detail: { id: Number(orderIdFromQuery) } }));
-        } catch {}
+        // attempt to clear server cart
+        try { if (token) { await fetch(`${apiBase.replace(/\/$/, '')}/api/cart`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); } } catch {}
+        try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } })); } catch {}
+        try { window.dispatchEvent(new CustomEvent('orderPlaced', { detail: { id: Number(orderIdFromQuery) } })); } catch {}
         return;
       }
       if (!dataParam) { setStatus('ok'); return; }
@@ -38,14 +38,9 @@ export default function PaymentSuccess() {
         if (body.verified) {
           setOrderId(body.orderId ?? null);
           setStatus('ok');
-          // Clear cart locally and notify listeners (e.g., Navbar cart count)
-          try {
-            localStorage.setItem('cart', JSON.stringify([]));
-            window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } }));
-            if (body.orderId) {
-              window.dispatchEvent(new CustomEvent('orderPlaced', { detail: { id: body.orderId } }));
-            }
-          } catch {}
+          try { if (token) { await fetch(`${apiBase.replace(/\/$/, '')}/api/cart`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); } } catch {}
+          try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } })); } catch {}
+          try { if (body.orderId) { window.dispatchEvent(new CustomEvent('orderPlaced', { detail: { id: body.orderId } })); } } catch {}
         } else {
           setStatus('fail');
         }

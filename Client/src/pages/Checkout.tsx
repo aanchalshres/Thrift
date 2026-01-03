@@ -36,7 +36,8 @@ export default function Checkout() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { user, token, loading: authLoading } = useAuth();
+  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   const {
     register,
@@ -60,18 +61,41 @@ export default function Checkout() {
 
   const paymentMethod = watch("payment");
 
-  // Load cart from unified key used by Cart/Shop
+  // Load cart from server after auth hydration; route is protected
   useEffect(() => {
-    const cart: CartItem[] = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCartItems(cart);
-  }, []);
+    if (authLoading) return;
+    if (!token) { setCartItems([]); return; }
+    (async () => {
+      try {
+        const resp = await fetch(`${apiBase.replace(/\/$/, '')}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+        if (resp.ok) {
+          const data = await resp.json();
+          setCartItems(Array.isArray(data) ? data : []);
+        } else {
+          setCartItems([]);
+        }
+      } catch {
+        setCartItems([]);
+      }
+    })();
+  }, [token, apiBase, authLoading]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 text-gray-700">
+          <span className="inline-block w-4 h-4 rounded-full border-2 border-slate-600 border-t-transparent animate-spin" />
+          <span>Preparing checkout…</span>
+        </div>
+      </div>
+    );
+  }
 
   const subtotal = cartItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const TAX_RATE = Number(import.meta.env.VITE_TAX_RATE ?? 0);
   const taxes = subtotal * TAX_RATE;
   const shipping = cartItems.length > 0 ? 200 : 0;
   const total = subtotal + taxes + shipping;
-  const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
   const simulateBankPayment = async (data: FormData) =>
     new Promise((resolve, reject) =>
@@ -204,8 +228,12 @@ export default function Checkout() {
 
       const created = await resp.json();
 
-      // Clear cart and show confirmation
-      localStorage.setItem("cart", JSON.stringify([]));
+      // Clear server cart (COD/Bank flows) and show confirmation
+      try {
+        if (token) {
+          await fetch(`${apiBase}/api/cart`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        }
+      } catch {}
       try { window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } })); } catch {}
       setCartItems([]);
       // Emit a lightweight event so Profile can refresh immediately

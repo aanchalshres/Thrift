@@ -48,14 +48,30 @@ export const ProductCard = ({
   const auth = useAuth();
   const apiBase = import.meta.env.VITE_API_URL || "https://thrift-production-af9f.up.railway.app";
 
-  // Load cart and wishlist from localStorage on mount
+  // Initialize cart count from server when authenticated; no localStorage cart
   useEffect(() => {
-    // load unified cart (array of item objects)
-    const storedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCartItems(Array.isArray(storedCart) ? storedCart.length : 0);
+    const init = async () => {
+      try {
+        if (auth?.token) {
+          const resp = await fetch(`${apiBase}/api/cart`, { headers: { Authorization: `Bearer ${auth.token}` } });
+          if (resp.ok) {
+            const data = await resp.json();
+            setCartItems(Array.isArray(data) ? data.length : 0);
+          } else {
+            setCartItems(0);
+          }
+        } else {
+          setCartItems(0);
+        }
+      } catch {
+        setCartItems(0);
+      }
+    };
+    init();
+    // wishlist local state remains as is for now
     const storedWishlist = JSON.parse(localStorage.getItem("wishlist") || "[]");
     setLiked(storedWishlist.includes(id));
-  }, [id]);
+  }, [id, auth?.token, apiBase]);
 
   const discountPercentage = originalPrice
     ? Math.round((1 - price / originalPrice) * 100)
@@ -74,7 +90,7 @@ export const ProductCard = ({
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     // Require auth for adding to cart (redirect suggestion)
     if (!auth?.token) {
       toast.error('Please sign in first', { description: 'Create an account to add items to your cart.' });
@@ -87,26 +103,44 @@ export const ProductCard = ({
       toast.error("Item cannot be added to cart", { description: `This listing is ${st.replace('_', ' ')}` });
       return;
     }
-    const storedCart: Array<any> = JSON.parse(localStorage.getItem("cart") || "[]");
-    const idx = storedCart.findIndex((c) => String(c.id) === String(id));
-    if (idx >= 0) {
-      // already present: don't duplicate for thrift single-quantity
-      try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: storedCart.length } })); } catch {}
-      setCartItems(storedCart.length);
-      toast.info("Item already in cart", { description: title });
-      return;
+
+    try {
+      const response = await fetch(`${apiBase}/api/cart/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({ productId: id, quantity: 1 }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Fetch updated cart count from database
+        const cartResponse = await fetch(`${apiBase}/api/cart`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        
+        if (cartResponse.ok) {
+          const cartData = await cartResponse.json();
+          setCartItems(cartData.length);
+          try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: cartData.length } })); } catch {}
+        }
+        
+        if (result.message === 'Cart updated') {
+          toast.info("Item already in cart", { description: title });
+        } else {
+          toast.success("Added to cart", { description: title });
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to add to cart");
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add to cart");
     }
-    storedCart.push({
-      id,
-      title,
-      price,
-      image: images && images[0] ? images[0] : "",
-      quantity: 1,
-    });
-    localStorage.setItem("cart", JSON.stringify(storedCart));
-    setCartItems(storedCart.length);
-    try { window.dispatchEvent(new CustomEvent("cartUpdated", { detail: { count: storedCart.length } })); } catch {}
-    toast.success("Added to cart", { description: title });
   };
 
   const handleToggleWishlist = () => {

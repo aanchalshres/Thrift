@@ -14,11 +14,12 @@ const orderRoutes = require("./routes/orders");
 const messageRoutes = require("./routes/messages");
 const categoriesRoutes = require("./routes/categories");
 const wishlistRoutes = require("./routes/wishlist");
+const cartRoutes = require("./routes/cart");
 const adminRoutes = require("./routes/admin");
 const paymentsRoutes = require("./routes/payments");
 const reviewsRoutes = require("./routes/reviews");
 const sellerFeedbackRoutes = require("./routes/sellerFeedback");
-const notificationsRoutes = require("./routes/notifications");
+// const notificationsRoutes = require("./routes/notifications");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -77,6 +78,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api", messageRoutes);
@@ -84,7 +86,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/sellers", sellerFeedbackRoutes);
-app.use("/api/notifications", notificationsRoutes);
+// app.use("/api/notifications", notificationsRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

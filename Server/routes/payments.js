@@ -4,12 +4,10 @@ require('dotenv').config();
 const { getEsewaEndpoint, signEsewa, buildEsewaConfig } = require('../utils/esewa');
 const pool = require('../db');
 
-// Helpers to derive base URLs in different deployment environments.
 function resolveServerBase() {
   const explicit = process.env.SERVER_BASE_URL;
   if (explicit) return explicit.replace(/\/$/, '');
-  const railway = process.env.RAILWAY_PUBLIC_DOMAIN; // Railway sets this for public services
-  if (railway) return `https://${railway}`;
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN; // Railway deployment
   return `http://localhost:${process.env.PORT || 5000}`;
 }
 
@@ -345,7 +343,6 @@ router.all('/khalti/return', async (req, res) => {
   }
 });
 
-// =============== Generic Verify (stub for reconciliation demos) ===============
 // POST /api/payments/verify { method: 'esewa'|'khalti'|'cod', orderId?, txn? }
 router.post('/verify', async (req, res) => {
   try {
@@ -369,7 +366,6 @@ router.post('/verify', async (req, res) => {
       }
     }
 
-    // If orderId provided, complete mapping and basic reconciliation checks
     if (orderId) {
       const [rows] = await pool.query('SELECT id, total, payment_status, esewa_transaction_uuid, khalti_pidx FROM orders WHERE id = ? LIMIT 1', [orderId]);
       const ord = Array.isArray(rows) && rows[0] ? rows[0] : null;
@@ -388,7 +384,6 @@ router.post('/verify', async (req, res) => {
       }
     }
 
-    // Write to ledger (best-effort)
     try {
       const payload = JSON.stringify({ method: methodLc, orderId, txn: gateway_txn_id, client: req.headers['user-agent'] || null });
       await pool.query(
@@ -403,7 +398,7 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// GET /api/payments/ledger - recent ledger entries (demo)
+// GET /api/payments/ledger
 router.get('/ledger', async (_req, res) => {
   try {
     const [rows] = await pool.query('SELECT id, order_id, method, gateway_txn_id, amount, currency, status, created_at FROM payment_ledger ORDER BY id DESC LIMIT 50');

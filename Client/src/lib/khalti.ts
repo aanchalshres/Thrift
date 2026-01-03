@@ -1,3 +1,4 @@
+//type definition
 export type KhaltiInitPayload = {
   amount: number;
   productName: string;
@@ -7,13 +8,15 @@ export type KhaltiInitPayload = {
 /**
  * Initiates a Khalti payment by calling the server and redirecting to the returned payment_url.
  */
+
+//function definition
 export async function initiateKhaltiPayment(
   apiBase: string,
   payload: KhaltiInitPayload,
   token?: string
 ): Promise<void> {
   const base = apiBase.replace(/\/$/, '');
-  const res = await fetch(`${base}/api/payments/khalti/initiate`, {
+  const res = await fetch(`${base}/api/payments/khalti/initiate`, { //api call to backend
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -21,11 +24,12 @@ export async function initiateKhaltiPayment(
     },
     body: JSON.stringify(payload),
   });
+  //api error handling
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to initiate Khalti: ${res.status} ${text}`);
   }
-  const data = await res.json();
+  const data = await res.json(); //parse backend response
   const url = data.payment_url as string | undefined;
   if (!url) throw new Error('No Khalti payment_url received');
   window.location.href = url;

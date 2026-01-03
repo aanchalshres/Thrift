@@ -60,8 +60,6 @@ export default function Checkout() {
   });
 
   const paymentMethod = watch("payment");
-
-  // Load cart from server after auth hydration; route is protected
   useEffect(() => {
     if (authLoading) return;
     if (!token) { setCartItems([]); return; }
